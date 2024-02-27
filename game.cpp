@@ -7,6 +7,10 @@
 #include <allegro5/allegro_acodec.h>
 #include <allegro5/allegro_image.h>
 
+//pointer to a class requires only a declaration of said class
+
+//one way to organise the files might be to put all the allegro-dependend stuff in one class, while pute game logic would be in others, avoiding inclusion conflicts
+
 
 /////////////////////////////////////////////////////////////////////////////////
 /// Init and helpers
@@ -251,6 +255,7 @@ void sprites_deinit()
 /////////////////////////////////////////////////////////////////////////////////
 
 ALLEGRO_SAMPLE* sample_shot;
+ALLEGRO_SAMPLE* bgm;
 ALLEGRO_SAMPLE* sample_explode[2];
 
 void audio_init()
@@ -262,6 +267,9 @@ void audio_init()
     sample_shot = al_load_sample("shot.flac");
     must_init(sample_shot, "shot sample");
 
+    bgm = al_load_sample("space_bgm.flac");
+    must_init(bgm, "bgm");
+
     sample_explode[0] = al_load_sample("explode1.flac");
     must_init(sample_explode[0], "explode[0] sample");
     sample_explode[1] = al_load_sample("explode2.flac");
@@ -271,6 +279,7 @@ void audio_init()
 void audio_deinit()
 {
     al_destroy_sample(sample_shot);
+    al_destroy_sample(bgm);
     al_destroy_sample(sample_explode[0]);
     al_destroy_sample(sample_explode[1]);
 }
@@ -295,12 +304,14 @@ void fx_init()
 {
     for (int i = 0; i < FX_N; i++)
         fx[i].used = false;
+
+    al_play_sample(bgm, 1.2, 0.0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 }
 
 void fx_add(bool spark, int x, int y)
 {
     if (!spark)
-        al_play_sample(sample_explode[between(0, 2)], 0.75, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+        al_play_sample(sample_explode[between(0, 2)], 0.5, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
 
     for (int i = 0; i < FX_N; i++)
     {
@@ -378,7 +389,7 @@ bool shots_add(bool ship, bool straight, int x, int y)
 {
     al_play_sample(
         sample_shot,
-        0.3,
+        0.1,
         0,
         ship ? 1.0 : between_f(1.5, 1.6),
         ALLEGRO_PLAYMODE_ONCE,
@@ -509,13 +520,13 @@ void shots_draw()
         int frame_display = (shots[i].frame / 2) % 2;
 
         if (shots[i].ship)
-            al_draw_bitmap(sprites.ship_shot[frame_display], shots[i].x, shots[i].y, 0);
+            al_draw_tinted_bitmap(sprites.ship_shot[frame_display], al_map_rgb(255, 200, 0), shots[i].x, shots[i].y, 0);
         else // alien
         {
             ALLEGRO_COLOR tint =
                 frame_display
-                ? al_map_rgb_f(1, 1, 1)
-                : al_map_rgb_f(0.5, 0.5, 0.5)
+                ? al_map_rgb_f(1, 0.9, 0.4)
+                : al_map_rgb_f(0.7, 0.6, 0.3)
                 ;
             al_draw_tinted_bitmap(sprites.alien_shot, tint, shots[i].x, shots[i].y, 0);
         }
@@ -619,7 +630,7 @@ void ship_draw()
     if (((ship.invincible_timer / 2) % 3) == 1)
         return;
 
-    al_draw_bitmap(sprites.ship, ship.x, ship.y, 0);
+    al_draw_tinted_bitmap(sprites.ship, al_map_rgb(150, 200, 255), ship.x, ship.y, 0);
 }
 
 
@@ -795,7 +806,7 @@ void aliens_draw()
         if (aliens[i].blink > 2)
             continue;
 
-        al_draw_bitmap(sprites.alien[aliens[i].type], aliens[i].x, aliens[i].y, 0);
+        al_draw_tinted_bitmap(sprites.alien[aliens[i].type], al_map_rgb(200, 50, 50), aliens[i].x, aliens[i].y, 0);
     }
 }
 
@@ -808,6 +819,7 @@ typedef struct STAR
 {
     float y;
     float speed;
+    float r, g, b;
 } STAR;
 
 #define STARS_N ((BUFFER_W / 2) - 1)
@@ -819,6 +831,9 @@ void stars_init()
     {
         stars[i].y = between_f(0, BUFFER_H);
         stars[i].speed = between_f(0.1, 1);
+        stars[i].r = between_f(-0.1, 0.1);
+        stars[i].g = between_f(-0.1, 0.1);
+        stars[i].b = between_f(-0.1, 0.1);
     }
 }
 
@@ -841,7 +856,10 @@ void stars_draw()
     for (int i = 0; i < STARS_N; i++)
     {
         float l = stars[i].speed * 0.8;
-        al_draw_pixel(star_x, stars[i].y, al_map_rgb_f(l, l, l));
+        float r = l + stars[i].r;
+        float g = l + stars[i].g;
+        float b = l + stars[i].b;
+        al_draw_pixel(star_x, stars[i].y, al_map_rgb_f(r, g, b));
         star_x += 2;
     }
 }
